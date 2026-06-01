@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
-const BRANDS = ['Hero', 'Honda', 'Bajaj', 'TVS', 'Royal Enfield', 'Yamaha', 'Suzuki', 'KTM'];
+const MODELS = [
+  'Splendor Plus', 'HF Deluxe', 'Super Splendor', 'Glamour',
+  'Passion Plus', 'Passion XTEC', 'Xtreme 125R', 'Xtreme 160R',
+  'Xpulse 200', 'Xpulse 200T', 'Karizma XMR', 'Destini 125'
+];
 
 const BookYourDreamBike = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [formState, setFormState] = useState({
     fullName: '',
-    email: '',
     phone: '',
+    modelName: '',
     city: '',
-    brand: '',
-    model: '',
+    state: '',
+    pincode: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -39,11 +43,11 @@ const BookYourDreamBike = () => {
       // Prepare form data for Forminit with proper field prefixes
       const formDataToSend = new FormData();
       formDataToSend.append('fi-sender-fullName', formState.fullName);
-      formDataToSend.append('fi-sender-email', formState.email);
       formDataToSend.append('fi-text-phone', formState.phone);
+      formDataToSend.append('fi-text-modelName', formState.modelName);
       formDataToSend.append('fi-text-city', formState.city);
-      formDataToSend.append('fi-text-brand', formState.brand);
-      formDataToSend.append('fi-text-model', formState.model);
+      formDataToSend.append('fi-text-state', formState.state);
+      formDataToSend.append('fi-text-pincode', formState.pincode);
 
       const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
         method: 'POST',
@@ -66,11 +70,11 @@ const BookYourDreamBike = () => {
         // Reset form
         setFormState({
           fullName: '',
-          email: '',
           phone: '',
+          modelName: '',
           city: '',
-          brand: '',
-          model: '',
+          state: '',
+          pincode: '',
         });
       } else {
         setMessage({
@@ -272,7 +276,7 @@ const BookYourDreamBike = () => {
             maxWidth: '620px',
             margin: '0 auto',
           }}>
-            {/* Full Name */}
+            {/* Row 1: Full Name + Phone */}
             <div>
               <label style={{ color: '#fff' }}>Full Name <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -282,10 +286,10 @@ const BookYourDreamBike = () => {
                 onChange={handleInputChange}
                 placeholder="Your name"
                 required
+                autoComplete="name"
               />
             </div>
 
-            {/* Phone */}
             <div>
               <label style={{ color: '#fff' }}>Phone <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -293,25 +297,15 @@ const BookYourDreamBike = () => {
                 name="phone"
                 value={formState.phone}
                 onChange={handleInputChange}
-                placeholder="Phone number"
+                placeholder="+91 XXXXX XXXXX"
                 required
+                autoComplete="tel"
               />
             </div>
 
-            {/* Email */}
-            <div>
-              <label style={{ color: '#fff' }}>Email <span style={{ color: '#ff4d4d' }}>*</span></label>
-              <input
-                type="email"
-                name="email"
-                value={formState.email}
-                onChange={handleInputChange}
-                placeholder="Email address"
-                required
-              />
-            </div>
+            
 
-            {/* City */}
+            {/* Row 3: City + State */}
             <div>
               <label style={{ color: '#fff' }}>City <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -319,40 +313,58 @@ const BookYourDreamBike = () => {
                 name="city"
                 value={formState.city}
                 onChange={handleInputChange}
-                placeholder="Lucknow / Kanpur..."
+                placeholder="Your city"
                 required
+                autoComplete="address-level2"
               />
             </div>
 
-            {/* Brand */}
             <div>
-              <label style={{ color: '#fff' }}>Brand <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <label style={{ color: '#fff' }}>State <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="text"
+                name="state"
+                value={formState.state}
+                onChange={handleInputChange}
+                placeholder="Your state"
+                required
+                autoComplete="address-level1"
+              />
+            </div>
+
+            <div>
+              <label style={{ color: '#fff' }}>Model Name <span style={{ color: '#ff4d4d' }}>*</span></label>
               <select
-                name="brand"
-                value={formState.brand}
+                name="modelName"
+                value={formState.modelName}
                 onChange={handleInputChange}
                 required
-                style={{ color: formState.brand ? '#222' : '#999' }}
+                style={{ color: formState.modelName ? '#222' : '#999' }}
               >
-                <option value="">Select brand</option>
-                {BRANDS.map(brand => (
-                  <option key={brand} value={brand}>{brand}</option>
+                <option value="">Select a model</option>
+                {MODELS.map(m => (
+                  <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </div>
 
-            {/* Model */}
+            {/* Row 4: Pincode (half width) */}
             <div>
-              <label style={{ color: '#fff' }}>Model <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <label style={{ color: '#fff' }}>Pincode <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
                 type="text"
-                name="model"
-                value={formState.model}
+                name="pincode"
+                value={formState.pincode}
                 onChange={handleInputChange}
-                placeholder="Classic 350 / Pulsar..."
+                placeholder="6-digit pincode"
                 required
+                maxLength={6}
+                autoComplete="postal-code"
               />
             </div>
+
+            {/* Spacer to keep submit full-width */}
+            <div />
 
             {/* Submit Button */}
             <div style={{ gridColumn: '1 / -1', marginTop: '12px', textAlign: 'center' }}>

@@ -5,31 +5,29 @@ const BikePurchaseModal = ({ bike, onClose }) => {
   const [formState, setFormState] = useState({
     fullName: '',
     phone: '',
-    email: '',
     bikeName: bike?.name || '',
-    color: '',
+    city: '',
+    state: '',
+    pincode: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
-    // Reset form when bike changes
     setFormState({
       fullName: '',
       phone: '',
-      email: '',
       bikeName: bike?.name || '',
-      color: '',
+      city: '',
+      state: '',
+      pincode: '',
     });
     setMessage({ type: '', text: '' });
   }, [bike]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormState(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormState(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFormSubmit = async (e) => {
@@ -40,10 +38,11 @@ const BikePurchaseModal = ({ bike, onClose }) => {
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('fi-sender-fullName', formState.fullName);
-      formDataToSend.append('fi-sender-email', formState.email);
       formDataToSend.append('fi-text-phone', formState.phone);
       formDataToSend.append('fi-text-bikeName', formState.bikeName);
-      formDataToSend.append('fi-text-color', formState.color);
+      formDataToSend.append('fi-text-city', formState.city);
+      formDataToSend.append('fi-text-state', formState.state);
+      formDataToSend.append('fi-text-pincode', formState.pincode);
 
       const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
         method: 'POST',
@@ -101,71 +100,98 @@ const BikePurchaseModal = ({ bike, onClose }) => {
         <h3 style={{ fontFamily: "'Barlow Condensed'", fontSize: 'clamp(22px, 5vw, 28px)', fontWeight: 900, color: '#111', marginBottom: 8 }}>
           Purchase: <span style={{ color: '#FF0000' }}>{bike?.name}</span>
         </h3>
-        <p style={{fontSize: '14px', color: '#666', marginBottom: '24px'}}>Fill in your details to express your interest in this motorcycle.</p>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
+          Fill in your details to express your interest in this motorcycle.
+        </p>
 
         <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '16px' }}>
+
+          {/* Full Name */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#555', marginBottom: 6 }}>Full Name *</label>
-            <input 
-              type="text" 
-              name="fullName" 
-              placeholder="Your full name" 
-              required 
-              value={formState.fullName} 
-              onChange={handleInputChange} 
-              style={inputStyle} 
+            <label style={labelStyle}>Full Name *</label>
+            <input
+              type="text"
+              name="fullName"
+              placeholder="Your full name"
+              required
+              value={formState.fullName}
+              onChange={handleInputChange}
+              style={inputStyle}
             />
           </div>
 
+          {/* Phone */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#555', marginBottom: 6 }}>Phone *</label>
-            <input 
-              type="tel" 
-              name="phone" 
-              placeholder="+91 XXXXX XXXXX" 
-              required 
-              value={formState.phone} 
-              onChange={handleInputChange} 
-              style={inputStyle} 
+            <label style={labelStyle}>Phone *</label>
+            <input
+              type="tel"
+              name="phone"
+              placeholder="+91 XXXXX XXXXX"
+              required
+              value={formState.phone}
+              onChange={handleInputChange}
+              style={inputStyle}
             />
           </div>
 
+          {/* Bike Model — pre-filled, disabled */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#555', marginBottom: 6 }}>Email</label>
-            <input 
-              type="email" 
-              name="email" 
-              placeholder="Your email address" 
-              value={formState.email} 
-              onChange={handleInputChange} 
-              style={inputStyle} 
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#555', marginBottom: 6 }}>Bike Model</label>
-            <input 
-              type="text" 
-              value={formState.bikeName} 
+            <label style={labelStyle}>Bike Model</label>
+            <input
+              type="text"
+              value={formState.bikeName}
               disabled
-              style={{...inputStyle, background: '#f5f5f5', cursor: 'not-allowed'}} 
+              style={{ ...inputStyle, background: '#f5f5f5', cursor: 'not-allowed' }}
             />
           </div>
 
+          {/* City + State side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>City *</label>
+              <input
+                type="text"
+                name="city"
+                placeholder="Your city"
+                required
+                value={formState.city}
+                onChange={handleInputChange}
+                style={inputStyle}
+                autoComplete="address-level2"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>State *</label>
+              <input
+                type="text"
+                name="state"
+                placeholder="Your state"
+                required
+                value={formState.state}
+                onChange={handleInputChange}
+                style={inputStyle}
+                autoComplete="address-level1"
+              />
+            </div>
+          </div>
+
+          {/* Pincode */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#555', marginBottom: 6 }}>Color/Variant</label>
-            <input 
-              type="text" 
-              name="color" 
-              placeholder="e.g., Black, Red, Blue" 
-              value={formState.color} 
-              onChange={handleInputChange} 
-              style={inputStyle} 
+            <label style={labelStyle}>Pincode *</label>
+            <input
+              type="text"
+              name="pincode"
+              placeholder="6-digit pincode"
+              required
+              maxLength={6}
+              value={formState.pincode}
+              onChange={handleInputChange}
+              style={inputStyle}
+              autoComplete="postal-code"
             />
           </div>
 
-
-
+          {/* Submit */}
           <button type="submit" disabled={loading} style={{
             ...submitButtonStyle,
             background: loading ? '#999' : '#FF0000',
@@ -188,6 +214,14 @@ const BikePurchaseModal = ({ bike, onClose }) => {
       </div>
     </div>
   );
+};
+
+const labelStyle = {
+  display: 'block',
+  fontSize: '13px',
+  fontWeight: 700,
+  color: '#555',
+  marginBottom: 6,
 };
 
 const inputStyle = {

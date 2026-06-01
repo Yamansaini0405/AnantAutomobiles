@@ -18,7 +18,7 @@ export default function Gallery({ showExplore = true, showHeader = true }) {
     { id: "bike-8", src: "/gallery/8.webp", type: "image", caption: "Hero Mavrick 440 - Adventure Ready" },
     { id: "bike-9", src: "/gallery/9.webp", type: "image", caption: "Hero Xoom 110 - Efficient Scooter" },
     { id: "bike-10", src: "/gallery/10.avif", type: "image", caption: "Hero Splendor Plus - Ultimate Reliability" },
-    { id: "bike-11", src: "/gallery/111.jpg", type: "image", caption: "Hero HF Deluxe - Trusted Commuter" },
+    // { id: "bike-11", src: "/gallery/111.jpg", type: "image", caption: "Hero HF Deluxe - Trusted Commuter" },
     { id: "bike-12", src: "/gallery/12.jpg", type: "image", caption: "Hero Destini 125 - Urban Classic" },
     { id: "bike-13", src: "/gallery/13.jpg", type: "image", caption: "Hero Passion Pro - Value for Money" },
     { id: "bike-14", src: "/gallery/14.jpg", type: "image", caption: "Hero Mavrick 440 - Adventure Ready" },

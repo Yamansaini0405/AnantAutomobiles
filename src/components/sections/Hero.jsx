@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // MEMOIZED FORM COMPONENT - isolated from carousel re-renders
-const EnquiryFormComponent = memo(({ 
-  formInputs, 
-  onInputChange, 
-  onSubmit, 
-  loading, 
-  message, 
-  isMobile = false 
+const EnquiryFormComponent = memo(({
+  formInputs,
+  onInputChange,
+  onSubmit,
+  loading,
+  message,
+  isMobile = false
 }) => {
   const inputStyle = {
     width: '100%',
@@ -24,6 +24,24 @@ const EnquiryFormComponent = memo(({
     transition: 'border-color 0.2s',
   };
 
+  const labelStyle = {
+    fontFamily: "'Barlow', sans-serif",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: '#999',
+    marginBottom: 4,
+    display: 'block',
+  };
+
+  const fieldWrap = (label, children) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <span style={labelStyle}>{label}</span>
+      {children}
+    </div>
+  );
+
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -31,74 +49,111 @@ const EnquiryFormComponent = memo(({
       <h2 style={{
         fontFamily: "'Barlow Condensed', sans-serif",
         fontSize: 22,
-        fontWeight: 600,
+        fontWeight: 700,
         color: '#000',
-        margin: `0 0 ${isMobile ? 14 : 16}px`,
+        margin: `0 0 ${isMobile ? 14 : 18}px`,
         letterSpacing: '-0.02em',
       }}>
         Find Your Perfect Bike
       </h2>
 
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input 
-          type="text"
-          name="fullName" 
-          value={formInputs.fullName} 
-          onChange={onInputChange}
-          placeholder="Full Name" 
-          required 
-          style={inputStyle} 
-          autoComplete="name"
-        />
-        <input 
-          type="tel" 
-          name="phone" 
-          value={formInputs.phone} 
-          onChange={onInputChange}
-          placeholder="Phone Number" 
-          required 
-          style={inputStyle}
-          autoComplete="tel"
-        />
-        <select 
-          name="brand" 
-          value={formInputs.brand} 
-          onChange={onInputChange} 
-          required
-          style={{ ...inputStyle, color: formInputs.brand ? '#111' : '#777' }}
-        >
-          <option value="" disabled>Select Models</option>
-          {BRANDS.map(b => (
-            <option key={b} value={b}>{b}</option>
-          ))}
-        </select>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input 
-            type="text"
-            name="city" 
-            value={formInputs.city} 
-            onChange={onInputChange}
-            placeholder="City" 
-            style={{ ...inputStyle, width: '50%' }}
-            autoComplete="off"
-          />
-          <input 
-            type="text"
-            name="pincode" 
-            value={formInputs.pincode} 
-            onChange={onInputChange}
-            placeholder="Pincode" 
-            style={{ ...inputStyle, width: '50%' }}
-            autoComplete="address-level2"
-          />
+      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Row 1: Name + Phone */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {fieldWrap('Full Name *',
+            <input
+              type="text"
+              name="fullName"
+              value={formInputs.fullName}
+              onChange={onInputChange}
+              placeholder="Your name"
+              required
+              style={inputStyle}
+              autoComplete="name"
+            />
+          )}
+          {fieldWrap('Phone Number *',
+            <input
+              type="tel"
+              name="phone"
+              value={formInputs.phone}
+              onChange={onInputChange}
+              placeholder="+91 XXXXX XXXXX"
+              required
+              style={inputStyle}
+              autoComplete="tel"
+            />
+          )}
         </div>
+
+        {/* Row 2: Model Name (full width) */}
+        {fieldWrap('Model Name *',
+          <select
+            name="model"
+            value={formInputs.model}
+            onChange={onInputChange}
+            required
+            style={{ ...inputStyle, color: formInputs.model ? '#111' : '#777' }}
+          >
+            <option value="" disabled>Select a model</option>
+            {BRANDS.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Row 3: City + State */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {fieldWrap('City *',
+            <input
+              type="text"
+              name="city"
+              value={formInputs.city}
+              onChange={onInputChange}
+              placeholder="Your city"
+              required
+              style={inputStyle}
+              autoComplete="address-level2"
+            />
+          )}
+          {fieldWrap('State *',
+            <input
+              type="text"
+              name="state"
+              value={formInputs.state}
+              onChange={onInputChange}
+              placeholder="Your state"
+              required
+              style={inputStyle}
+              autoComplete="address-level1"
+            />
+          )}
+        </div>
+
+        {/* Row 4: Pincode (half width) */}
+        {fieldWrap('Pincode *',
+          <input
+            type="text"
+            name="pincode"
+            value={formInputs.pincode}
+            onChange={onInputChange}
+            placeholder="6-digit pincode"
+            required
+            maxLength={6}
+            style={inputStyle}
+            autoComplete="postal-code"
+          />
+        )}
+
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           style={{
-            marginTop: 6,
+            marginTop: 4,
             padding: '13px',
             background: loading ? '#999' : (hovered ? '#cc0000' : '#000'),
             color: '#fff',
@@ -118,9 +173,10 @@ const EnquiryFormComponent = memo(({
         >
           {loading ? 'Submitting...' : 'Submit Enquiry →'}
         </button>
+
         {message.text && (
           <div style={{
-            marginTop: 10,
+            marginTop: 4,
             padding: '10px 12px',
             borderRadius: 6,
             fontSize: 13,
@@ -193,9 +249,9 @@ export default function Hero() {
   const [formInputs, setFormInputs] = useState({
     fullName: '',
     phone: '',
-    brand: '',
     model: '',
     city: '',
+    state: '',
     pincode: ''
   });
   const [loading, setLoading] = useState(false);
@@ -244,10 +300,11 @@ export default function Hero() {
       const formDataToSend = new FormData();
       formDataToSend.append('fi-sender-fullName', formInputs.fullName);
       formDataToSend.append('fi-text-phone', formInputs.phone);
-      formDataToSend.append('fi-text-brand', formInputs.brand);
       formDataToSend.append('fi-text-model', formInputs.model);
       formDataToSend.append('fi-text-city', formInputs.city);
+      formDataToSend.append('fi-text-state', formInputs.state);
       formDataToSend.append('fi-text-pincode', formInputs.pincode);
+      console.log('Submitting form with data:', Object.fromEntries(formDataToSend.entries()));
 
       const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
         method: 'POST',
@@ -259,7 +316,7 @@ export default function Hero() {
           type: 'success',
           text: 'Thank you! Your inquiry has been received.'
         });
-        setFormInputs({ fullName: '', phone: '', brand: '', model: '', city: '', pincode: '' });
+        setFormInputs({ fullName: '', phone: '', model: '', city: '', state: '', pincode: '' });
         setTimeout(() => setMobileFormOpen(false), 1500);
       } else {
         setMessage({

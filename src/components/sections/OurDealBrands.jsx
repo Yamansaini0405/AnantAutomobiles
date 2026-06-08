@@ -1,38 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const bikes = [
-  {
-    id: 1,
-    name: 'Splendor Plus',
-    price: '₹75,000*',
-    img: 'https://mrgmotors.com/wp-content/uploads/2022/01/splendor-plus-ibs-i3s-21-removebg-preview.png'
-  },
-  {
-    id: 2,
-    name: 'HF Deluxe',
-    price: '₹60,000*',
-    img: 'https://imgd.aeplcdn.com/370x208/n/cw/ec/212719/hf-deluxe-right-side-view-2.png?isig=0&q=100'
-  },
-  {
-    id: 3,
-    name: 'Xtreme 125R',
-    price: '₹95,000*',
-    img: 'https://www.heromotocorp.com/content/dam/hero-commerce/in/en/products/performance/xtreme-125r/HXTRSASSCFIBPR/360/2.png'
-  },
-  {
-    id: 4,
-    name: 'Glamour',
-    price: '₹85,000*',
-    img: 'https://bikebazardelhi.com/uploads/vehicle/4545-removebg-preview.png'
-  }
-];
-
 export default function OurDealBikes() {
+  const [bikes, setBikes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const sectionRef = useRef(null);
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch bikes from your API
+  useEffect(() => {
+    fetch('http://backend.yaytech.in/api/bike-models/')
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData.success && Array.isArray(resData.data)) {
+          // Filter out deleted items
+          const activeBikes = resData.data.filter((bike) => !bike.isDeleted);
+          setBikes(activeBikes);
+        }
+      })
+      .catch((err) => console.error('Error fetching bike models:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Intersection Observer for fade-in entrance
   useEffect(() => {
     const obs = new IntersectionObserver(
       ([e]) => {
@@ -45,58 +36,67 @@ export default function OurDealBikes() {
     );
     if (sectionRef.current) obs.observe(sectionRef.current);
     return () => obs.disconnect();
-  }, []);
+  }, [loading]); // Re-run when loading finishes to catch the populated grid
 
   const Card = ({ bike, delay }) => {
+    // Construct absolute backend image URL
+    const imageUrl = bike.imageUrl.startsWith('http')
+      ? bike.imageUrl
+      : `http://backend.yaytech.in${bike.imageUrl}`;
+
     return (
       <div
         style={{
-          width: 240,
           background: '#fff',
           borderRadius: 16,
-          padding: 16,
+          padding: 20,
           textAlign: 'center',
           boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
           opacity: visible ? 1 : 0,
           transform: visible ? 'translateY(0)' : 'translateY(30px)',
           transition: `all 0.7s ease ${delay}ms`,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'translateY(-10px) scale(1.04)';
-          e.currentTarget.style.boxShadow =
-            '0 12px 32px rgba(0,0,0,0.4)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.4)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow =
-            '0 6px 16px rgba(0,0,0,0.25)';
+          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.25)';
         }}
       >
-        <img
-          src={bike.img}
-          alt={bike.name}
-          style={{
-            width: '100%',
-            height: 130,
-            objectFit: 'contain'
-          }}
-        />
+        <div style={{ width: '100%' }}>
+          <img
+            src={imageUrl}
+            alt={bike.name}
+            style={{
+              width: '100%',
+              height: 140,
+              objectFit: 'contain'
+            }}
+            onError={(e) => {
+              // Fallback if image fails to load
+              e.target.src = 'https://placehold.co/240x140?text=No+Image';
+            }}
+          />
 
-        <h3 style={{ margin: '12px 0 6px', color: '#111' }}>
-          {bike.name}
-        </h3>
-
-        <p
-          style={{
-            margin: 0,
-            fontWeight: 'bold',
-            color: '#e11d48',
-            fontSize: 16
-          }}
-        >
-          {bike.price}
-        </p>
+          <h3 
+            style={{ 
+              margin: '16px 0 0', 
+              color: '#111', 
+              fontSize: '18px',
+              fontFamily: 'sans-serif',
+              lineHeight: '1.3'
+            }}
+          >
+            {bike.name}
+          </h3>
+        </div>
 
         <button
           onClick={() => {
@@ -107,14 +107,16 @@ export default function OurDealBikes() {
             }, 100);
           }}
           style={{
-            marginTop: 12,
-            padding: '10px 14px',
+            marginTop: 20,
+            width: '100%',
+            padding: '12px 14px',
             borderRadius: 8,
             border: 'none',
             background: '#e11d48',
             color: '#fff',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            transition: 'background 0.2s'
           }}
         >
           Book Test Ride
@@ -130,7 +132,8 @@ export default function OurDealBikes() {
         padding: '80px 5vw',
         position: 'relative',
         overflow: 'hidden',
-        color: '#ffffff'
+        color: '#ffffff',
+        minHeight: '400px'
       }}
     >
       <style>{`
@@ -165,8 +168,7 @@ export default function OurDealBikes() {
           style={{
             width: 180,
             height: 3,
-            background:
-              'linear-gradient(to right, transparent, #ffffff88, transparent)',
+            background: 'linear-gradient(to right, transparent, #ffffff88, transparent)',
             margin: '0 auto 28px'
           }}
         />
@@ -189,24 +191,30 @@ export default function OurDealBikes() {
         </p>
       </div>
 
-      {/* Bikes Grid */}
-      <div
-        ref={sectionRef}
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: 32,
-          maxWidth: '1400px',
-          margin: '0 auto'
-        }}
-      >
-        {bikes.map((bike, i) => (
-          <Card key={bike.id} bike={bike} delay={i * 80} />
-        ))}
-      </div>
+      {/* Bikes CSS Grid Container */}
+      {loading ? (
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, fontSize: '18px' }}>
+          Loading Bike Fleet...
+        </div>
+      ) : (
+        <div
+          ref={sectionRef}
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: 32,
+            maxWidth: '1400px',
+            margin: '0 auto',
+            width: '100%'
+          }}
+        >
+          {bikes.map((bike, i) => (
+            <Card key={bike.id} bike={bike} delay={i * 80} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

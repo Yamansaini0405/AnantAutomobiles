@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-// MEMOIZED FORM COMPONENT - isolated from carousel re-renders
+// MEMOIZED FORM COMPONENT
 const EnquiryFormComponent = memo(({
   formInputs,
   onInputChange,
   onSubmit,
   loading,
   message,
+  bikeOptions,
   isMobile = false
 }) => {
   const inputStyle = {
@@ -87,7 +88,7 @@ const EnquiryFormComponent = memo(({
           )}
         </div>
 
-        {/* Row 2: Model Name (full width) */}
+        {/* Row 2: Model Name (Dynamic) */}
         {fieldWrap('Model Name *',
           <select
             name="model"
@@ -97,7 +98,7 @@ const EnquiryFormComponent = memo(({
             style={{ ...inputStyle, color: formInputs.model ? '#111' : '#777' }}
           >
             <option value="" disabled>Select a model</option>
-            {BRANDS.map(b => (
+            {bikeOptions.map(b => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
@@ -131,7 +132,7 @@ const EnquiryFormComponent = memo(({
           )}
         </div>
 
-        {/* Row 4: Pincode (half width) */}
+        {/* Row 4: Pincode */}
         {fieldWrap('Pincode *',
           <input
             type="text"
@@ -197,55 +198,24 @@ const EnquiryFormComponent = memo(({
 EnquiryFormComponent.displayName = 'EnquiryForm';
 
 const heroSlides = [
-  {
-    image: '/images/banner7.png',
-    // title: 'ROYAL\nENFIELD',
-    // sub: 'LAUNCHED',
-  },
-  {
-    image: '/images/banner4.png',
-    // title: 'BAJAJ\nPULSAR',
-    // sub: 'LAUNCHED',
-  },
-  {
-    image: '/images/banner5.png',
-    // title: 'HONDA\nCB500',
-    // sub: 'LAUNCHED',
-  },
-  // {
-  //   image: '/images/hero4.jpg',
-  //   // title: 'KTM\nDUKE 390',
-  //   // sub: 'LAUNCHED',
-  // },
+  { image: '/images/banner7.png' },
+  { image: '/images/banner4.png' },
+  { image: '/images/banner5.png' },
 ];
 
-// const BRANDS = ['Hero', 'Honda', 'Bajaj', 'TVS', 'Royal Enfield', 'Yamaha', 'Suzuki', 'KTM'];
-const BRANDS = [
-  'Splendor Plus',
-  'HF Deluxe',
-  'Super Splendor',
-  'Glamour',
-  'Passion Plus',
-  'Passion XTEC',
-  'Xtreme 125R',
-  'Xtreme 160R',
-  'Xpulse 200',
-  'Xpulse 200T',
-  'Karizma XMR',
-  'Destini 125'
-];
 const DURATION = 5000;
 const TRANSITION_MS = 800;
 
 export default function Hero() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [current, setCurrent] = useState(0);
   const [textVisible, setTextVisible] = useState(true);
-  const [tab, setTab] = useState('new');
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
+  const [bikeOptions, setBikeOptions] = useState([]);
   const transRef = useRef(false);
 
-  // NEW FORM STATE
+  // FORM STATE
   const [formInputs, setFormInputs] = useState({
     fullName: '',
     phone: '',
@@ -256,6 +226,28 @@ export default function Hero() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Fetch real fleet dynamic models
+  useEffect(() => {
+    fetch('http://backend.yaytech.in/api/bike-models/')
+      .then(res => res.json())
+      .then(resData => {
+        if(resData.success && Array.isArray(resData.data)) {
+          const names = resData.data.filter(b => !b.isDeleted).map(b => b.name);
+          setBikeOptions(names);
+        }
+      })
+      .catch(err => console.error("Error global-fetching options", err));
+  }, []);
+
+  // Listen for query url parameters to auto select models
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const modelParam = queryParams.get('model');
+    if (modelParam) {
+      setFormInputs(prev => ({ ...prev, model: modelParam }));
+    }
+  }, [location, bikeOptions]);
 
   useEffect(() => {
     heroSlides.forEach(s => { const img = new Image(); img.src = s.image; });
@@ -297,21 +289,26 @@ export default function Hero() {
     setMessage({ type: '', text: '' });
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('fi-sender-fullName', formInputs.fullName);
-      formDataToSend.append('fi-text-phone', formInputs.phone);
-      formDataToSend.append('fi-text-model', formInputs.model);
-      formDataToSend.append('fi-text-city', formInputs.city);
-      formDataToSend.append('fi-text-state', formInputs.state);
-      formDataToSend.append('fi-text-pincode', formInputs.pincode);
-      console.log('Submitting form with data:', Object.fromEntries(formDataToSend.entries()));
+      const payload = {
+        data: {
+          fullName: formInputs.fullName,
+          phone: formInputs.phone,
+          model: formInputs.model,
+          city: formInputs.city,
+          state: formInputs.state,
+          pincode: formInputs.pincode
+        }
+      };
 
-      const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
+      const response = await fetch('http://backend.yaytech.in/api/inquiries/sales', {
         method: 'POST',
-        body: formDataToSend,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
+      const resData = await response.json();
+
+      if (response.ok && resData.success !== false) {
         setMessage({
           type: 'success',
           text: 'Thank you! Your inquiry has been received.'
@@ -321,11 +318,11 @@ export default function Hero() {
       } else {
         setMessage({
           type: 'error',
-          text: 'Error submitting form. Please try again.'
+          text: resData.message || 'Error submitting form. Please try again.'
         });
       }
     } catch (error) {
-      console.error('Form error:', error);
+      console.error('Form submission error:', error);
       setMessage({
         type: 'error',
         text: 'Network error. Please check your connection and try again.'
@@ -353,7 +350,6 @@ export default function Hero() {
           {heroSlides.map((s, i) => (
             <img key={i} src={s.image} alt="" style={{
               position: 'absolute', inset: 0,
-
               width: '100%', height: '100%',
               objectFit: 'cover', objectPosition: '72% center',
               opacity: i === current ? 1 : 0,
@@ -394,18 +390,16 @@ export default function Hero() {
               onSubmit={handleSubmit}
               loading={loading}
               message={message}
+              bikeOptions={bikeOptions}
             />
           </div>
 
-          {/* Right: bike title (commented as in original) */}
           <div style={{ marginLeft: 'auto', textAlign: 'right', maxWidth: '50%' }}>
             <div style={{
               opacity: textVisible ? 1 : 0,
               transform: textVisible ? 'translateY(0)' : 'translateY(18px)',
               transition: `opacity ${TRANSITION_MS * 0.6}ms ease, transform ${TRANSITION_MS * 0.6}ms ease`,
-            }}>
-              {/* title + sub commented out as in your original code */}
-            </div>
+            }} />
           </div>
         </div>
       </section>
@@ -418,7 +412,6 @@ export default function Hero() {
         flexDirection: 'column',
         paddingBottom: 24,
         marginTop:12,
-
         boxSizing: 'border-box',
       }}>
 
@@ -430,10 +423,8 @@ export default function Hero() {
           borderRadius: 16,
           overflow: 'hidden',
           aspectRatio: '16 / 9',
-          // boxShadow: '0 6px 28px rgba(0,0,0,0.18)',
           flexShrink: 0,
         }}>
-          {/* Slides */}
           {heroSlides.map((s, i) => (
             <img key={i} src={s.image} alt="" style={{
               position: 'absolute', inset: 0,
@@ -444,7 +435,6 @@ export default function Hero() {
             }} />
           ))}
 
-          {/* Updated gradient – stops earlier to protect button area */}
           <div style={{
             position: 'absolute',
             bottom: 0, left: 0, right: 0,
@@ -453,39 +443,7 @@ export default function Hero() {
             pointerEvents: 'none',
           }} />
 
-          {/* Bottom-left: heading text – moved up */}
-          <div style={{
-            position: 'absolute',
-            bottom: 82,  // ← increased from 46
-            left: 16,
-            zIndex: 5,
-            opacity: textVisible ? 1 : 0,
-            transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
-            transition: `opacity ${TRANSITION_MS * 0.6}ms ease, transform ${TRANSITION_MS * 0.6}ms ease`,
-          }}>
-            <p style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontSize: 'clamp(20px,6vw,28px)',
-              fontWeight: 900,
-              lineHeight: 1,
-              color: '#fff',
-              textTransform: 'uppercase',
-              letterSpacing: '-0.02em',
-              textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-              margin: '0 0 2px',
-              whiteSpace: 'pre-line',
-            }}>{slide.title}</p>
-            <p style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.22em',
-              color: 'rgba(255,255,255,0.7)',
-              textTransform: 'uppercase',
-              margin: 0,
-            }}>{slide.sub}</p>
-          </div>
-
-          {/* Enquire Now button – main fix area */}
+          {/* Enquire Button */}
           <button
             onClick={() => setMobileFormOpen(true)}
             style={{
@@ -513,7 +471,7 @@ export default function Hero() {
           </button>
         </div>
 
-        {/* 4 Feature Cards grid – unchanged */}
+        {/* Feature grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -521,9 +479,7 @@ export default function Hero() {
           padding: '14px 12px 0',
         }}>
           {[
-            // { label: 'New Bikes', sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '', route: '/public-bikes' },
             { label: 'Services',  sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '⚙️', route: '/services' },
-            // { label: 'Blogs',     sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '', route: '/blogs' },
             { label: 'Offers',    sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '', route: '/offers' },
           ].map((card, idx) => (
             <div key={idx} onClick={() => navigate(card.route)} style={{
@@ -580,7 +536,6 @@ export default function Hero() {
             padding: '0 22px 48px',
             maxHeight: '92vh', overflowY: 'auto',
             boxSizing: 'border-box',
-            animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
           }}>
             <div style={{
               display: 'flex', alignItems: 'center',
@@ -605,6 +560,7 @@ export default function Hero() {
               onSubmit={handleSubmit}
               loading={loading}
               message={message}
+              bikeOptions={bikeOptions}
               isMobile
             />
           </div>
@@ -617,50 +573,20 @@ export default function Hero() {
         target="_blank"
         rel="noopener noreferrer"
         style={{
-          position: 'fixed',
-          bottom: '30px',
-          right: '30px',
-          zIndex: 999,
-          width: '64px',
-          height: '64px',
-          borderRadius: '50%',
-          background: '#25d366',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 6px 28px rgba(37, 211, 102, 0.4)',
-          cursor: 'pointer',
-          textDecoration: 'none',
-          transition: 'all 0.3s ease',
-          animation: 'floatUpDown 2.5s ease-in-out infinite',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.transform = 'scale(1.1)';
-          e.currentTarget.style.boxShadow = '0 8px 32px rgba(37, 211, 102, 0.6)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 6px 28px rgba(37, 211, 102, 0.4)';
+          position: 'fixed', bottom: '30px', right: '30px', zIndex: 999,
+          width: '64px', height: '64px', borderRadius: '50%', background: '#25d366',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 28px rgba(37, 211, 102, 0.4)', cursor: 'pointer',
         }}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48">
-<path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24	c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z"></path><path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6	C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3	L5,43.8C5,43.8,4.9,43.8,4.9,43.8z"></path><path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3	l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24	c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2	c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z"></path><path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8l6-1.6l0.6,0.3	c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z"></path><path fill="#fff" fill-rule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4	s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6	s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4	c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8	C20.6,19.3,19.7,17,19.3,16z" clip-rule="evenodd"></path>
-</svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 48 48">
+          <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z"></path>
+          <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z"></path>
+          <path fill="#fff" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z"></path>
+        </svg>
       </a>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700;800&display=swap');
-
-        @keyframes slideUp {
-          from { transform: translateY(100%); opacity: 0; }
-          to   { transform: translateY(0);    opacity: 1; }
-        }
-
-        @keyframes floatUpDown {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
-        }
-
         @media (max-width: 940px) {
           .desktop-hero { display: none !important; }
           .mobile-hero  { display: flex !important; }
@@ -668,16 +594,6 @@ export default function Hero() {
         @media (min-width: 941px) {
           .desktop-hero { display: block !important; }
           .mobile-hero  { display: none !important; }
-        }
-        .mobile-hero * { box-sizing: border-box; }
-
-        @media (max-width: 640px) {
-          a[href*="wa.me"] {
-            bottom: 20px !important;
-            right: 20px !important;
-            width: 56px !important;
-            height: 56px !important;
-          }
         }
       `}</style>
     </>

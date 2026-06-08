@@ -75,7 +75,7 @@ function useInView(threshold = 0.1) {
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect(); } }, { threshold });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
-  }, []);
+  }, [threshold]);
   return [ref, vis];
 }
 
@@ -190,6 +190,9 @@ const freeServices = [
 export default function Services() {
   const [globalForm, setGlobalForm] = useState({ name: '', phone: '', latitude: null, longitude: null, serviceType: '', isPaid: 'paid', freeServiceId: '' });
   const [locationStatus, setLocationStatus] = useState('ready');
+  const [submitting, setSubmitting] = useState(false);
+  const [responseMessage, setResponseMessage] = useState({ type: '', text: '' });
+  
   const [heroRef, heroVis] = useInView(0.01);
   const bookingRef = useRef(null);
 
@@ -216,6 +219,70 @@ export default function Services() {
       alert('Geolocation is not supported by your browser.');
     }
   };
+
+  // ─── API WORKFLOW ACTION HANDLER ───────────────────────────────────────────
+  const handleServiceSubmission = async () => {
+    if (!globalForm.name || !globalForm.phone || !globalForm.serviceType || !globalForm.latitude || !globalForm.longitude) {
+      setResponseMessage({ type: 'error', text: 'Please complete all required fields including your verified location metrics.' });
+      return;
+    }
+    if (globalForm.isPaid === 'free' && !globalForm.freeServiceId) {
+      setResponseMessage({ type: 'error', text: 'Please choose an applicable Free Service Voucher ID to continue.' });
+      return;
+    }
+
+    setSubmitting(true);
+    setResponseMessage({ type: '', text: '' });
+
+    try {
+      // Setup payload matching backend data format
+      const payload = {
+        data: {
+          name: globalForm.name,
+          phone: globalForm.phone,
+          latitude: parseFloat(globalForm.latitude),
+          longitude: parseFloat(globalForm.longitude),
+          serviceType: globalForm.serviceType,
+          isPaid: globalForm.isPaid === 'paid', // Conversional mapping to dynamic boolean
+          freeServiceId: globalForm.isPaid === 'free' ? globalForm.freeServiceId : null,
+        }
+      };
+
+      const response = await fetch('http://backend.yaytech.in/api/inquiries/service', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const resData = await response.json();
+
+      if (response.ok && resData.success !== false) {
+        setResponseMessage({
+          type: 'success',
+          text: 'Success! Your workshop reservation has been submitted safely. Our service managers will contact you shortly.'
+        });
+        // Clear state fields on successful execution
+        setGlobalForm({ name: '', phone: '', latitude: null, longitude: null, serviceType: '', isPaid: 'paid', freeServiceId: '' });
+        setLocationStatus('ready');
+      } else {
+        setResponseMessage({
+          type: 'error',
+          text: resData.message || 'Transmission declined. Please double-check input parameters and resubmit.'
+        });
+      }
+    } catch (err) {
+      console.error('Error dispatching service inquiry:', err);
+      setResponseMessage({
+        type: 'error',
+        text: 'Network transmission failure. Verify backend server environment status connectivity.'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -386,7 +453,7 @@ export default function Services() {
             </p>
           </div>
 
-          {/* Global Form */}
+          {/* Global Form Content Box */}
           <div style={{ background: '#fff', borderRadius: 8, padding: 'clamp(28px, 5vw, 40px)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 20px' }}>
               {/* Name */}
@@ -401,20 +468,20 @@ export default function Services() {
                 <input type="tel" placeholder="+91 XXXXX XXXXX" value={globalForm.phone} onChange={e => setGlobalForm(p => ({ ...p, phone: e.target.value }))} />
               </div>
 
-              {/* Location */}
+              {/* Location Coordination System */}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontFamily: "'Rajdhani', sans-serif", display: 'block', fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Location *</label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
                     <input type="text" placeholder="Tap 'Get Location' to enable auto-detection" value={globalForm.latitude && globalForm.longitude ? `${globalForm.latitude.toFixed(5)}, ${globalForm.longitude.toFixed(5)}` : ''} readOnly style={{ background: '#f5f5f5', color: '#888' }} />
                   </div>
-                  <button onClick={getGeolocation} disabled={locationStatus === 'loading'} style={{ padding: '11px 20px', background: locationStatus === 'success' ? '#00AA44' : (locationStatus === 'error' ? '#CC0000' : '#111'), color: '#fff', border: 'none', borderRadius: 4, cursor: locationStatus === 'loading' ? 'not-allowed' : 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', opacity: locationStatus === 'loading' ? 0.7 : 1, transition: 'all 0.3s ease' }} onMouseEnter={e => locationStatus !== 'loading' && (e.currentTarget.style.opacity = '0.85')} onMouseLeave={e => locationStatus !== 'loading' && (e.currentTarget.style.opacity = '1')}>
+                  <button onClick={getGeolocation} disabled={locationStatus === 'loading'} style={{ padding: '11px 20px', background: locationStatus === 'success' ? '#00AA44' : (locationStatus === 'error' ? '#CC0000' : '#111'), color: '#fff', border: 'none', borderRadius: 4, cursor: locationStatus === 'loading' ? 'not-allowed' : 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', opacity: locationStatus === 'loading' ? 0.7 : 1, transition: 'all 0.3s ease' }}>
                     {locationStatus === 'loading' ? 'Getting...' : (locationStatus === 'success' ? '✓ Got' : 'Get Location')}
                   </button>
                 </div>
               </div>
 
-              {/* FIX 1: Corrected mismatched braces in onChange handler */}
+              {/* Service Type */}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontFamily: "'Rajdhani', sans-serif", display: 'block', fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Service Type *</label>
                 <select value={globalForm.serviceType} onChange={e => setGlobalForm(p => ({ ...p, serviceType: e.target.value }))}>
@@ -425,10 +492,10 @@ export default function Services() {
 
               {/* Paid/Free Toggle */}
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontFamily: "'Rajdhani', sans-serif", display: 'block', fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Service Type</label>
+                <label style={{ fontFamily: "'Rajdhani', sans-serif", display: 'block', fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Classification</label>
                 <div style={{ display: 'flex', gap: 12 }}>
                   {['paid', 'free'].map(type => (
-                    <button key={type} onClick={() => setGlobalForm(p => ({ ...p, isPaid: type, freeServiceId: '' }))} style={{ flex: 1, padding: '12px 16px', background: globalForm.isPaid === type ? '#CC0000' : '#f0f0f0', color: globalForm.isPaid === type ? '#fff' : '#111', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'capitalize', transition: 'all 0.2s ease' }} onMouseEnter={e => globalForm.isPaid !== type && (e.currentTarget.style.background = '#e0e0e0')} onMouseLeave={e => globalForm.isPaid !== type && (e.currentTarget.style.background = '#f0f0f0')}>
+                    <button key={type} onClick={() => setGlobalForm(p => ({ ...p, isPaid: type, freeServiceId: '' }))} style={{ flex: 1, padding: '12px 16px', background: globalForm.isPaid === type ? '#CC0000' : '#f0f0f0', color: globalForm.isPaid === type ? '#fff' : '#111', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'capitalize', transition: 'all 0.2s ease' }}>
                       {type === 'paid' ? 'Paid Service' : 'Free Service'}
                     </button>
                   ))}
@@ -441,7 +508,7 @@ export default function Services() {
                   <label style={{ fontFamily: "'Rajdhani', sans-serif", display: 'block', fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Select Free Service *</label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                     {freeServices.map(fs => (
-                      <button key={fs.id} onClick={() => setGlobalForm(p => ({ ...p, freeServiceId: fs.id.toString() }))} style={{ padding: '12px 14px', background: globalForm.freeServiceId === fs.id.toString() ? '#00AA44' : '#f5f5f5', color: globalForm.freeServiceId === fs.id.toString() ? '#fff' : '#111', border: globalForm.freeServiceId === fs.id.toString() ? '1px solid #00AA44' : '1px solid #e0e0e0', borderRadius: 4, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, textAlign: 'center', transition: 'all 0.2s ease' }} onMouseEnter={e => globalForm.freeServiceId !== fs.id.toString() && (e.currentTarget.style.background = '#efefef')} onMouseLeave={e => globalForm.freeServiceId !== fs.id.toString() && (e.currentTarget.style.background = '#f5f5f5')}>
+                      <button key={fs.id} onClick={() => setGlobalForm(p => ({ ...p, freeServiceId: fs.id.toString() }))} style={{ padding: '12px 14px', background: globalForm.freeServiceId === fs.id.toString() ? '#00AA44' : '#f5f5f5', color: globalForm.freeServiceId === fs.id.toString() ? '#fff' : '#111', border: globalForm.freeServiceId === fs.id.toString() ? '1px solid #00AA44' : '1px solid #e0e0e0', borderRadius: 4, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, textAlign: 'center', transition: 'all 0.2s ease' }}>
                         {fs.name}
                       </button>
                     ))}
@@ -449,9 +516,39 @@ export default function Services() {
                 </div>
               )}
 
+              {/* Dynamic Response Feedback Banner */}
+              {responseMessage.text && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  padding: '12px 16px',
+                  borderRadius: 4,
+                  fontSize: '13.5px',
+                  fontWeight: 500,
+                  fontFamily: "'DM Sans', sans-serif",
+                  backgroundColor: responseMessage.type === 'success' ? '#E6FFE6' : '#FFE6E6',
+                  color: responseMessage.type === 'success' ? '#008800' : '#CC0000',
+                  textAlign: 'center',
+                  border: responseMessage.type === 'success' ? '1px solid #B3FFB3' : '1px solid #FFB3B3'
+                }}>
+                  {responseMessage.text}
+                </div>
+              )}
+
               {/* Submit Button */}
-              <button onClick={() => { if (!globalForm.name || !globalForm.phone || !globalForm.serviceType || (globalForm.isPaid === 'free' && !globalForm.freeServiceId) || !globalForm.latitude || !globalForm.longitude) { alert('Please fill in all required fields.'); return; } console.log('Form submitted:', globalForm); alert(`Service booking request submitted!\n\nName: ${globalForm.name}\nPhone: ${globalForm.phone}\nLocation: ${globalForm.latitude.toFixed(5)}, ${globalForm.longitude.toFixed(5)}\nService: ${globalForm.serviceType}\nType: ${globalForm.isPaid === 'paid' ? 'Paid' : 'Free'}`); setGlobalForm({ name: '', phone: '', latitude: null, longitude: null, serviceType: '', isPaid: 'paid', freeServiceId: '' }); setLocationStatus('ready'); }} style={{ gridColumn: '1 / -1', padding: '14px', background: '#CC0000', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 8, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onMouseEnter={e => e.currentTarget.style.background = '#AA0000'} onMouseLeave={e => e.currentTarget.style.background = '#CC0000'}>
-                Book Service <span style={{ fontWeight: 400 }}>→</span>
+              <button 
+                onClick={handleServiceSubmission} 
+                disabled={submitting}
+                style={{ 
+                  gridColumn: '1 / -1', padding: '14px', background: submitting ? '#999' : '#CC0000', color: '#fff', 
+                  border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', 
+                  fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', 
+                  textTransform: 'uppercase', marginTop: 8, transition: 'all 0.2s ease', display: 'flex', 
+                  alignItems: 'center', justifyContent: 'center', gap: 8 
+                }} 
+                onMouseEnter={e => !submitting && (e.currentTarget.style.background = '#AA0000')} 
+                onMouseLeave={e => !submitting && (e.currentTarget.style.background = '#CC0000')}
+              >
+                {submitting ? 'Processing Order...' : 'Book Service'} <span style={{ fontWeight: 400 }}>→</span>
               </button>
             </div>
           </div>

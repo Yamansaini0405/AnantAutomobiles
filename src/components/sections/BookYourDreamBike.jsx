@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-
-const MODELS = [
-  'Splendor Plus', 'HF Deluxe', 'Super Splendor', 'Glamour',
-  'Passion Plus', 'Passion XTEC', 'Xtreme 125R', 'Xtreme 160R',
-  'Xpulse 200', 'Xpulse 200T', 'Karizma XMR', 'Destini 125'
-];
+import { useLocation } from 'react-router-dom';
 
 const BookYourDreamBike = () => {
   const [isMobile, setIsMobile] = useState(false);
+  const [models, setModels] = useState([]);
+  const location = useLocation();
+
   const [formState, setFormState] = useState({
     fullName: '',
     phone: '',
@@ -19,6 +17,7 @@ const BookYourDreamBike = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // Handle screen resize
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 860);
     check();
@@ -26,11 +25,35 @@ const BookYourDreamBike = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // Fetch active models dynamically from the backend API
+  useEffect(() => {
+    fetch('http://backend.yaytech.in/api/bike-models/')
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData.success && Array.isArray(resData.data)) {
+          const activeModels = resData.data
+            .filter((bike) => !bike.isDeleted)
+            .map((bike) => bike.name);
+          setModels(activeModels);
+        }
+      })
+      .catch((err) => console.error('Error fetching bike options:', err));
+  }, []);
+
+  // Listen for query parameter parameters to automatically select models
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const modelParam = queryParams.get('model');
+    if (modelParam) {
+      setFormState((prev) => ({ ...prev, modelName: modelParam }));
+    }
+  }, [location, models]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormState(prev => ({
+    setFormState((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -40,34 +63,32 @@ const BookYourDreamBike = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      // Prepare form data for Forminit with proper field prefixes
-      const formDataToSend = new FormData();
-      formDataToSend.append('fi-sender-fullName', formState.fullName);
-      formDataToSend.append('fi-text-phone', formState.phone);
-      formDataToSend.append('fi-text-modelName', formState.modelName);
-      formDataToSend.append('fi-text-city', formState.city);
-      formDataToSend.append('fi-text-state', formState.state);
-      formDataToSend.append('fi-text-pincode', formState.pincode);
+      const payload = {
+        data: {
+          fullName: formState.fullName,
+          phone: formState.phone,
+          model: formState.modelName,
+          city: formState.city,
+          state: formState.state,
+          pincode: formState.pincode,
+        },
+      };
 
-      const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
+      const response = await fetch('http://backend.yaytech.in/api/inquiries/sales', {
         method: 'POST',
-        body: formDataToSend,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
-      let responseData = {};
-      try {
-        responseData = await response.json();
-      } catch (e) {
-        // If response is not JSON, just check status code
-        responseData = { success: response.ok };
-      }
+      const responseData = await response.json();
 
-      if (responseData.success === true || (response.ok && !responseData.error)) {
+      if (response.ok && responseData.success !== false) {
         setMessage({
           type: 'success',
-          text: 'Thank you! Your inquiry has been received. Our team will contact you soon.'
+          text: 'Thank you! Your inquiry has been received. Our team will contact you soon.',
         });
-        // Reset form
         setFormState({
           fullName: '',
           phone: '',
@@ -79,14 +100,14 @@ const BookYourDreamBike = () => {
       } else {
         setMessage({
           type: 'error',
-          text: responseData.message || 'Error submitting form. Please try again.'
+          text: responseData.message || 'Error submitting form. Please try again.',
         });
       }
     } catch (error) {
       console.error('Form error:', error);
       setMessage({
         type: 'error',
-        text: 'Error submitting form. Please try again later.'
+        text: 'Error submitting form. Please try again later.',
       });
     } finally {
       setLoading(false);
@@ -303,9 +324,7 @@ const BookYourDreamBike = () => {
               />
             </div>
 
-            
-
-            {/* Row 3: City + State */}
+            {/* Row 2: City + State */}
             <div>
               <label style={{ color: '#fff' }}>City <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -342,13 +361,13 @@ const BookYourDreamBike = () => {
                 style={{ color: formState.modelName ? '#222' : '#999' }}
               >
                 <option value="">Select a model</option>
-                {MODELS.map(m => (
+                {models.map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </div>
 
-            {/* Row 4: Pincode (half width) */}
+            {/* Row 3: Pincode */}
             <div>
               <label style={{ color: '#fff' }}>Pincode <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -363,7 +382,7 @@ const BookYourDreamBike = () => {
               />
             </div>
 
-            {/* Spacer to keep submit full-width */}
+            {/* Spacer */}
             <div />
 
             {/* Submit Button */}

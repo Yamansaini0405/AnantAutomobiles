@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 const BikePurchaseModal = ({ bike, onClose }) => {
   const [formState, setFormState] = useState({
     fullName: '',
-    email: '',
     phone: '',
     bikeName: bike?.name || '',
     city: '',
@@ -15,14 +14,11 @@ const BikePurchaseModal = ({ bike, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  
-  // Structured state to track geolocation status just like Services.jsx
   const [locationStatus, setLocationStatus] = useState('ready');
 
   useEffect(() => {
     setFormState({
       fullName: '',
-      email: '',
       phone: '',
       bikeName: bike?.name || '',
       city: '',
@@ -35,7 +31,6 @@ const BikePurchaseModal = ({ bike, onClose }) => {
     setLocationStatus('ready');
   }, [bike]);
 
-  // Unified geolocation handler with state updates and explicit error alerts
   const getGeolocation = () => {
     setLocationStatus('loading');
     if ('geolocation' in navigator) {
@@ -60,8 +55,6 @@ const BikePurchaseModal = ({ bike, onClose }) => {
     }
   };
 
-  // Optional: Auto-trigger location prompt on mount just like your original code,
-  // but now it safely plugs into the new status handler!
   useEffect(() => {
     if (bike) {
       getGeolocation();
@@ -75,14 +68,6 @@ const BikePurchaseModal = ({ bike, onClose }) => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    
-    // Optional: If you want to make location strictly mandatory like Services.jsx, 
-    // you can uncomment the guard lines below:
-    // if (!formState.latitude || !formState.longitude) {
-    //   setMessage({ type: 'error', text: 'Please verify your location metrics before submitting.' });
-    //   return;
-    // }
-
     setLoading(true);
     setMessage({ type: '', text: '' });
 
@@ -90,7 +75,6 @@ const BikePurchaseModal = ({ bike, onClose }) => {
       const payload = {
         data: {
           fullName: formState.fullName,
-          email: formState.email,
           phone: formState.phone,
           model: formState.bikeName,
           city: formState.city,
@@ -176,20 +160,6 @@ const BikePurchaseModal = ({ bike, onClose }) => {
             />
           </div>
 
-          {/* Email */}
-          <div>
-            <label style={labelStyle}>Email *</label>
-            <input
-              type="email"
-              name="email"
-              placeholder="your.email@example.com"
-              required
-              value={formState.email}
-              onChange={handleInputChange}
-              style={inputStyle}
-            />
-          </div>
-
           {/* Phone */}
           <div>
             <label style={labelStyle}>Phone *</label>
@@ -215,7 +185,7 @@ const BikePurchaseModal = ({ bike, onClose }) => {
             />
           </div>
 
-          {/* Location Coordination System Section */}
+          {/* Location Coordinates System */}
           <div>
             <label style={labelStyle}>Location Coordinates *</label>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -229,7 +199,7 @@ const BikePurchaseModal = ({ bike, onClose }) => {
                 />
               </div>
               <button 
-                type="button" // Prevents form submission on press
+                type="button"
                 onClick={getGeolocation} 
                 disabled={locationStatus === 'loading'} 
                 style={{ 

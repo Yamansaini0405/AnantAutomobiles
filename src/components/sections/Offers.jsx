@@ -52,41 +52,86 @@ function OfferCard({ offer, index }) {
       {/* Top accent bar */}
       <div style={{ height: 3, background: cardBg }} />
 
-      {/* Header block */}
-      <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #F0F0F0', background: '#FAFAFA' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 4,
-            background: cardBg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: 22, fontWeight: 600, color: '#fff',
-          }}>
-            {displayIcon}
-          </div>
+      {/* Dynamic Image Block or Fallback Header Block */}
+      {offer.imageUrl ? (
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: '#f5f5f5' }}>
+          <img 
+            src={`https://backend.yaytech.in${offer.imageUrl}`} 
+            alt={`${offer.name} Header`} 
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+              transform: hov ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.4s ease'
+            }} 
+          />
           <span style={{
-            background: '#F5F5F5',
+            position: 'absolute',
+            top: 14,
+            right: 14,
+            background: 'rgba(255, 255, 255, 0.95)',
             border: '1px solid #E8E8E8',
-            color: '#555',
+            color: '#111',
             fontSize: 10,
             fontFamily: "'Rajdhani', sans-serif",
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '4px 10px',
             borderRadius: 2,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             {offer.type === 'PERCENTAGE' ? 'Limited Deal' : 'Instant Save'}
           </span>
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            padding: '16px 24px',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+          }}>
+            <h3 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 20, fontWeight: 700, color: '#fff', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+              {offer.name} Offer
+            </h3>
+          </div>
         </div>
+      ) : (
+        /* Legacy Header block fallback structure for non-image discount metrics */
+        <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #F0F0F0', background: '#FAFAFA' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 4,
+              background: cardBg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: 22, fontWeight: 600, color: '#fff',
+            }}>
+              {displayIcon}
+            </div>
+            <span style={{
+              background: '#F5F5F5',
+              border: '1px solid #E8E8E8',
+              color: '#555',
+              fontSize: 10,
+              fontFamily: "'Rajdhani', sans-serif",
+              fontWeight: 600,
+              padding: '4px 10px',
+              borderRadius: 2,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            }}>
+              {offer.type === 'PERCENTAGE' ? 'Limited Deal' : 'Instant Save'}
+            </span>
+          </div>
 
-        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>
-          {offer.type === 'PERCENTAGE' ? 'Percentage Benefit' : 'Flat Cash Discount'}
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>
+            {offer.type === 'PERCENTAGE' ? 'Percentage Benefit' : 'Flat Cash Discount'}
+          </div>
+          <h3 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 22, fontWeight: 600, color: '#111', lineHeight: 1.2, letterSpacing: '-0.01em', marginBottom: 0 }}>
+            {offer.name} Offer
+          </h3>
         </div>
-        <h3 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 22, fontWeight: 600, color: '#111', lineHeight: 1.2, letterSpacing: '-0.01em', marginBottom: 0 }}>
-          {offer.name} Offer
-        </h3>
-      </div>
+      )}
 
       {/* Saving strip */}
       <div style={{ background: cardBg, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -123,14 +168,6 @@ function OfferCard({ offer, index }) {
             </span>
           )}
         </div>
-
-        {/* Validity block */}
-        {/* <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: cardBg }} />
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#888' }}>
-            Created: {new Date(offer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-        </div> */}
 
         {/* Terms accordion */}
         <div style={{ marginBottom: 20, borderTop: '1px solid #F0F0F0', paddingTop: 14 }}>
@@ -203,7 +240,6 @@ export default function Offers() {
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
-          // Filter out deleted items and verify that the discount is marked active
           const activeDiscounts = resData.data.filter(item => !item.isDeleted && item.isActive);
           setOffers(activeDiscounts);
         }
@@ -273,11 +309,11 @@ export default function Offers() {
         .filter-btn.active { background: #CC0000; border-color: #CC0000; color: #fff; }
         .stripe-bg { background-image: repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(255,255,255,0.03) 3px, rgba(255,255,255,0.03) 6px); }
 
-        @media (max-width: 640px) {
-          .offers-grid { grid-template-columns: 1fr !important; }
-          .hero-h1 { font-size: clamp(40px, 12vw, 80px) !important; }
-          .banner-inner { flex-direction: column !important; }
-          .banner-buttons { flex-direction: column !important; width: 100% !important; }
+        @media (max-width: 860px) {
+          .offers-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+          .hero-h1 { font-size: clamp(36px, 10vw, 72px) !important; }
+          .banner-inner { flex-direction: column !important; align-items: flex-start !important; gap: 28px !important; }
+          .banner-buttons { width: 100% !important; }
         }
         @media (min-width: 641px) and (max-width: 960px) {
           .offers-grid { grid-template-columns: repeat(2, 1fr) !important; }

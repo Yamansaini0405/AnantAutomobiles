@@ -13,9 +13,12 @@ const BookYourDreamBike = () => {
     city: '',
     state: '',
     pincode: '',
+    latitude: null,
+    longitude: null,
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [locationStatus, setLocationStatus] = useState('ready');
 
   // Handle screen resize
   useEffect(() => {
@@ -49,6 +52,36 @@ const BookYourDreamBike = () => {
     }
   }, [location, models]);
 
+  // Integrated Geolocation system matching BikePurchaseModal.jsx logic
+  const getGeolocation = () => {
+    setLocationStatus('loading');
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormState(prev => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }));
+          setLocationStatus('success');
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationStatus('error');
+          alert('Unable to get location. Please enable location services.');
+        }
+      );
+    } else {
+      setLocationStatus('error');
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  // Optional: Trigger location tracking system silently immediately upon page mount
+  useEffect(() => {
+    getGeolocation();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormState((prev) => ({
@@ -71,6 +104,8 @@ const BookYourDreamBike = () => {
           city: formState.city,
           state: formState.state,
           pincode: formState.pincode,
+          latitude: formState.latitude ? parseFloat(formState.latitude) : null,
+          longitude: formState.longitude ? parseFloat(formState.longitude) : null,
         },
       };
 
@@ -96,7 +131,10 @@ const BookYourDreamBike = () => {
           city: '',
           state: '',
           pincode: '',
+          latitude: null,
+          longitude: null,
         });
+        setLocationStatus('ready');
       } else {
         setMessage({
           type: 'error',
@@ -152,7 +190,7 @@ const BookYourDreamBike = () => {
           letter-spacing: 0.02em;
         }
 
-        .dream-bike-form button {
+        .dream-bike-form button.submit-btn {
           width: 100%;
           max-width: 420px;
           padding: 15px 40px;
@@ -169,13 +207,13 @@ const BookYourDreamBike = () => {
           transition: all 0.22s ease;
         }
 
-        .dream-bike-form button:hover:not(:disabled) {
+        .dream-bike-form button.submit-btn:hover:not(:disabled) {
           background-color: #cc0000;
           transform: translateY(-2px);
           box-shadow: 0 10px 28px rgba(230, 0, 0, 0.48);
         }
 
-        .dream-bike-form button:disabled {
+        .dream-bike-form button.submit-btn:disabled {
           background-color: #999;
           cursor: not-allowed;
           opacity: 0.7;
@@ -215,7 +253,7 @@ const BookYourDreamBike = () => {
             gap: 16px !important;
             max-width: 100%;
           }
-          .dream-bike-form button {
+          .dream-bike-form button.submit-btn {
             max-width: 100%;
           }
         }
@@ -324,7 +362,38 @@ const BookYourDreamBike = () => {
               />
             </div>
 
-            {/* Row 2: City + State */}
+            {/* Row 2: Model Name + Pincode */}
+            <div>
+              <label style={{ color: '#fff' }}>Model Name <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <select
+                name="modelName"
+                value={formState.modelName}
+                onChange={handleInputChange}
+                required
+                style={{ color: formState.modelName ? '#222' : '#999' }}
+              >
+                <option value="">Select a model</option>
+                {models.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ color: '#fff' }}>Pincode <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="text"
+                name="pincode"
+                value={formState.pincode}
+                onChange={handleInputChange}
+                placeholder="6-digit pincode"
+                required
+                maxLength={6}
+                autoComplete="postal-code"
+              />
+            </div>
+
+            {/* Row 3: City + State */}
             <div>
               <label style={{ color: '#fff' }}>City <span style={{ color: '#ff4d4d' }}>*</span></label>
               <input
@@ -351,43 +420,47 @@ const BookYourDreamBike = () => {
               />
             </div>
 
-            <div>
-              <label style={{ color: '#fff' }}>Model Name <span style={{ color: '#ff4d4d' }}>*</span></label>
-              <select
-                name="modelName"
-                value={formState.modelName}
-                onChange={handleInputChange}
-                required
-                style={{ color: formState.modelName ? '#222' : '#999' }}
-              >
-                <option value="">Select a model</option>
-                {models.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+            {/* Location Coordinates Row System across full row width */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#fff' }}>Location Coordinates <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <input 
+                    type="text" 
+                    placeholder="Tap 'Get Location' if coordinates are empty" 
+                    value={formState.latitude && formState.longitude ? `${formState.latitude.toFixed(5)}, ${formState.longitude.toFixed(5)}` : ''} 
+                    readOnly 
+                    style={{ background: '#f5f5f5', color: '#666' }} 
+                  />
+                </div>
+                <button 
+                  type="button"
+                  onClick={getGeolocation} 
+                  disabled={locationStatus === 'loading'} 
+                  style={{ 
+                    padding: '0 20px', 
+                    background: locationStatus === 'success' ? '#00AA44' : (locationStatus === 'error' ? '#e60000' : '#fff'), 
+                    color: locationStatus === 'success' || locationStatus === 'error' ? '#fff' : '#111', 
+                    border: 'none', 
+                    borderRadius: 8, 
+                    cursor: locationStatus === 'loading' ? 'not-allowed' : 'pointer', 
+                    fontFamily: "'Barlow', sans-serif", 
+                    fontSize: 12, 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase', 
+                    whiteSpace: 'nowrap', 
+                    opacity: locationStatus === 'loading' ? 0.7 : 1, 
+                    transition: 'all 0.3s ease' 
+                  }}
+                >
+                  {locationStatus === 'loading' ? 'Getting...' : (locationStatus === 'success' ? '✓ Got' : 'Get Location')}
+                </button>
+              </div>
             </div>
-
-            {/* Row 3: Pincode */}
-            <div>
-              <label style={{ color: '#fff' }}>Pincode <span style={{ color: '#ff4d4d' }}>*</span></label>
-              <input
-                type="text"
-                name="pincode"
-                value={formState.pincode}
-                onChange={handleInputChange}
-                placeholder="6-digit pincode"
-                required
-                maxLength={6}
-                autoComplete="postal-code"
-              />
-            </div>
-
-            {/* Spacer */}
-            <div />
 
             {/* Submit Button */}
             <div style={{ gridColumn: '1 / -1', marginTop: '12px', textAlign: 'center' }}>
-              <button type="submit" disabled={loading}>
+              <button type="submit" className="submit-btn" disabled={loading}>
                 {loading ? 'Submitting...' : 'Enquire Now →'}
               </button>
 

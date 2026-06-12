@@ -9,6 +9,8 @@ const EnquiryFormComponent = memo(({
   loading,
   message,
   bikeOptions,
+  locationStatus,
+  onGetLocation,
   isMobile = false
 }) => {
   const inputStyle = {
@@ -147,6 +149,43 @@ const EnquiryFormComponent = memo(({
           />
         )}
 
+        {/* Location Coordinates Row System */}
+        {fieldWrap('Location Coordinates *',
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <input 
+                type="text" 
+                placeholder="Tap 'Get Location' if empty" 
+                value={formInputs.latitude && formInputs.longitude ? `${formInputs.latitude.toFixed(5)}, ${formInputs.longitude.toFixed(5)}` : ''} 
+                readOnly 
+                style={{ ...inputStyle, background: '#f5f5f5', color: '#666' }} 
+              />
+            </div>
+            <button 
+              type="button"
+              onClick={onGetLocation} 
+              disabled={locationStatus === 'loading'} 
+              style={{ 
+                padding: '0 14px', 
+                background: locationStatus === 'success' ? '#00AA44' : (locationStatus === 'error' ? '#cc0000' : '#111'), 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: 7, 
+                cursor: locationStatus === 'loading' ? 'not-allowed' : 'pointer', 
+                fontFamily: "'Barlow', sans-serif", 
+                fontSize: 11, 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                whiteSpace: 'nowrap', 
+                opacity: locationStatus === 'loading' ? 0.7 : 1, 
+                transition: 'all 0.3s ease' 
+              }}
+            >
+              {locationStatus === 'loading' ? 'Getting...' : (locationStatus === 'success' ? '✓ Got' : 'Get Location')}
+            </button>
+          </div>
+        )}
+
         {/* Submit */}
         <button
           type="submit"
@@ -215,17 +254,20 @@ export default function Hero() {
   const [bikeOptions, setBikeOptions] = useState([]);
   const transRef = useRef(false);
 
-  // FORM STATE
+  // FORM STATE WITH LOCATION COORDINATES
   const [formInputs, setFormInputs] = useState({
     fullName: '',
     phone: '',
     model: '',
     city: '',
     state: '',
-    pincode: ''
+    pincode: '',
+    latitude: null,
+    longitude: null
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [locationStatus, setLocationStatus] = useState('ready');
 
   // Fetch real fleet dynamic models
   useEffect(() => {
@@ -248,6 +290,36 @@ export default function Hero() {
       setFormInputs(prev => ({ ...prev, model: modelParam }));
     }
   }, [location, bikeOptions]);
+
+  // Unified geolocation request engine
+  const handleGetLocation = useCallback(() => {
+    setLocationStatus('loading');
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormInputs(prev => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }));
+          setLocationStatus('success');
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationStatus('error');
+          alert('Unable to get location. Please enable location services.');
+        }
+      );
+    } else {
+      setLocationStatus('error');
+      alert('Geolocation is not supported by your browser.');
+    }
+  }, []);
+
+  // Run automated fallback search lookup on base mount frame
+  useEffect(() => {
+    handleGetLocation();
+  }, [handleGetLocation]);
 
   useEffect(() => {
     heroSlides.forEach(s => { const img = new Image(); img.src = s.image; });
@@ -296,7 +368,9 @@ export default function Hero() {
           model: formInputs.model,
           city: formInputs.city,
           state: formInputs.state,
-          pincode: formInputs.pincode
+          pincode: formInputs.pincode,
+          latitude: formInputs.latitude ? parseFloat(formInputs.latitude) : null,
+          longitude: formInputs.longitude ? parseFloat(formInputs.longitude) : null,
         }
       };
 
@@ -313,7 +387,8 @@ export default function Hero() {
           type: 'success',
           text: 'Thank you! Your inquiry has been received.'
         });
-        setFormInputs({ fullName: '', phone: '', model: '', city: '', state: '', pincode: '' });
+        setFormInputs({ fullName: '', phone: '', model: '', city: '', state: '', pincode: '', latitude: null, longitude: null });
+        setLocationStatus('ready');
         setTimeout(() => setMobileFormOpen(false), 1500);
       } else {
         setMessage({
@@ -331,8 +406,6 @@ export default function Hero() {
       setLoading(false);
     }
   }, [formInputs]);
-
-  const slide = heroSlides[current];
 
   return (
     <>
@@ -391,6 +464,8 @@ export default function Hero() {
               loading={loading}
               message={message}
               bikeOptions={bikeOptions}
+              locationStatus={locationStatus}
+              onGetLocation={handleGetLocation}
             />
           </div>
 
@@ -561,6 +636,8 @@ export default function Hero() {
               loading={loading}
               message={message}
               bikeOptions={bikeOptions}
+              locationStatus={locationStatus}
+              onGetLocation={handleGetLocation}
               isMobile
             />
           </div>

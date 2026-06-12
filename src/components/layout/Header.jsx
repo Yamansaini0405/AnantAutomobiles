@@ -54,7 +54,7 @@ export default function Header() {
 
   // Fetch Motorcycles
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/bike-models/')
+    fetch('https://backend.yaytech.in/api/bike-models/')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
@@ -64,7 +64,7 @@ export default function Header() {
             badge: b.launchYear >= 2026 ? 'NEW' : null,
             badgeRed: true,
             specs: [`${b.fuelType || 'Petrol'} FI Engine`, `Mileage: ${b.mileage || 50} kmpl`],
-            image: b.imageUrl.startsWith('http') ? b.imageUrl : `http://backend.yaytech.in${b.imageUrl}`,
+            image: b.imageUrl.startsWith('http') ? b.imageUrl : `https://backend.yaytech.in${b.imageUrl}`,
             category: (b.category || 'commuter').toLowerCase().trim()
           }));
 
@@ -90,7 +90,7 @@ export default function Header() {
 
   // Fetch Dynamic Accessories
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/accessories')
+    fetch('https://backend.yaytech.in/api/accessories')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
@@ -102,7 +102,7 @@ export default function Header() {
               price: item.price,
               stock: item.quantityInStock,
               remark: item.remark || 'Genuine Rider Gear',
-              image: item.imageUrl.startsWith('http') ? item.imageUrl : `http://backend.yaytech.in${item.imageUrl}`
+              image: item.imageUrl.startsWith('http') ? item.imageUrl : `https://backend.yaytech.in${item.imageUrl}`
             }));
           setAccessoriesList(validAccessories);
           if (validAccessories.length > 0) {

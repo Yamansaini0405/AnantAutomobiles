@@ -199,7 +199,7 @@ export default function Offers() {
 
   // API Live Fetch Integration 
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/discounts')
+    fetch('https://backend.yaytech.in/api/discounts')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {

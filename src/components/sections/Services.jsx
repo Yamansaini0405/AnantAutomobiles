@@ -248,7 +248,7 @@ export default function Services() {
         }
       };
 
-      const response = await fetch('http://backend.yaytech.in/api/inquiries/service', {
+      const response = await fetch('https://backend.yaytech.in/api/inquiries/service', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

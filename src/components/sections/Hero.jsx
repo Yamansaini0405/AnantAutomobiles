@@ -229,7 +229,7 @@ export default function Hero() {
 
   // Fetch real fleet dynamic models
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/bike-models/')
+    fetch('https://backend.yaytech.in/api/bike-models/')
       .then(res => res.json())
       .then(resData => {
         if(resData.success && Array.isArray(resData.data)) {
@@ -300,7 +300,7 @@ export default function Hero() {
         }
       };
 
-      const response = await fetch('http://backend.yaytech.in/api/inquiries/sales', {
+      const response = await fetch('https://backend.yaytech.in/api/inquiries/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

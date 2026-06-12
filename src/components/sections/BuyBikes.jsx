@@ -14,7 +14,7 @@ export default function BuyBikes() {
 
   // Dynamic API Fleet Fetching
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/bike-models/')
+    fetch('https://backend.yaytech.in/api/bike-models/')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
@@ -29,7 +29,7 @@ export default function BuyBikes() {
               price: `₹${bike.exShowroomPrice?.toLocaleString('en-IN')}`,
               rawPrice: bike.exShowroomPrice,
               emi: `₹${Math.round(bike.exShowroomPrice * 0.028).toLocaleString('en-IN')}/mo`,
-              img: bike.imageUrl.startsWith('http') ? bike.imageUrl : `http://backend.yaytech.in${bike.imageUrl}`,
+              img: bike.imageUrl.startsWith('http') ? bike.imageUrl : `https://backend.yaytech.in${bike.imageUrl}`,
               fuel: `${bike.mileage || '55'} kmpl`,
               engine: `${bike.engineCapacity || '110'}cc`,
               tag: bike.launchYear >= 2026 ? 'New' : bike.mileage > 70 ? 'Best Seller' : ''

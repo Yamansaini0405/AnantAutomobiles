@@ -10,7 +10,7 @@ export default function OurDealBikes() {
 
   // Fetch bikes from your API
   useEffect(() => {
-    fetch('http://backend.yaytech.in/api/bike-models/')
+    fetch('https://backend.yaytech.in/api/bike-models/')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
@@ -42,7 +42,7 @@ export default function OurDealBikes() {
     // Construct absolute backend image URL
     const imageUrl = bike.imageUrl.startsWith('http')
       ? bike.imageUrl
-      : `http://backend.yaytech.in${bike.imageUrl}`;
+      : `https://backend.yaytech.in${bike.imageUrl}`;
 
     return (
       <div

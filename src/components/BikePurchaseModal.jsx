@@ -4,25 +4,68 @@ import { X } from 'lucide-react';
 const BikePurchaseModal = ({ bike, onClose }) => {
   const [formState, setFormState] = useState({
     fullName: '',
+    email: '',
     phone: '',
     bikeName: bike?.name || '',
     city: '',
     state: '',
     pincode: '',
+    latitude: null,
+    longitude: null,
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Structured state to track geolocation status just like Services.jsx
+  const [locationStatus, setLocationStatus] = useState('ready');
 
   useEffect(() => {
     setFormState({
       fullName: '',
+      email: '',
       phone: '',
       bikeName: bike?.name || '',
       city: '',
       state: '',
       pincode: '',
+      latitude: null,
+      longitude: null,
     });
     setMessage({ type: '', text: '' });
+    setLocationStatus('ready');
+  }, [bike]);
+
+  // Unified geolocation handler with state updates and explicit error alerts
+  const getGeolocation = () => {
+    setLocationStatus('loading');
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormState(prev => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }));
+          setLocationStatus('success');
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationStatus('error');
+          alert('Unable to get location. Please enable location services.');
+        }
+      );
+    } else {
+      setLocationStatus('error');
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  // Optional: Auto-trigger location prompt on mount just like your original code,
+  // but now it safely plugs into the new status handler!
+  useEffect(() => {
+    if (bike) {
+      getGeolocation();
+    }
   }, [bike]);
 
   const handleInputChange = (e) => {
@@ -32,31 +75,43 @@ const BikePurchaseModal = ({ bike, onClose }) => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    
+    // Optional: If you want to make location strictly mandatory like Services.jsx, 
+    // you can uncomment the guard lines below:
+    // if (!formState.latitude || !formState.longitude) {
+    //   setMessage({ type: 'error', text: 'Please verify your location metrics before submitting.' });
+    //   return;
+    // }
+
     setLoading(true);
     setMessage({ type: '', text: '' });
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('fi-sender-fullName', formState.fullName);
-      formDataToSend.append('fi-text-phone', formState.phone);
-      formDataToSend.append('fi-text-bikeName', formState.bikeName);
-      formDataToSend.append('fi-text-city', formState.city);
-      formDataToSend.append('fi-text-state', formState.state);
-      formDataToSend.append('fi-text-pincode', formState.pincode);
+      const payload = {
+        data: {
+          fullName: formState.fullName,
+          email: formState.email,
+          phone: formState.phone,
+          model: formState.bikeName,
+          city: formState.city,
+          state: formState.state,
+          pincode: formState.pincode,
+          latitude: formState.latitude ? parseFloat(formState.latitude) : null,
+          longitude: formState.longitude ? parseFloat(formState.longitude) : null,
+        },
+      };
 
-      const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
+      const response = await fetch('https://backend.yaytech.in/api/inquiries/sales', {
         method: 'POST',
-        body: formDataToSend,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
-      let responseData = {};
-      try {
-        responseData = await response.json();
-      } catch (e) {
-        responseData = { success: response.ok };
-      }
+      const responseData = await response.json();
 
-      if (responseData.success === true || (response.ok && !responseData.error)) {
+      if (response.ok && responseData.success !== false) {
         setMessage({
           type: 'success',
           text: 'Thank you! Your bike purchase inquiry has been received. Our team will contact you soon with details.'
@@ -90,12 +145,13 @@ const BikePurchaseModal = ({ bike, onClose }) => {
         width: '90%', maxWidth: 500,
         position: 'relative',
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+        maxHeight: '90vh', overflowY: 'auto'
       }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16, background: 'none',
           border: 'none', fontSize: 24, cursor: 'pointer', color: '#888'
         }}>
-          ×
+          <X size={20} />
         </button>
         <h3 style={{ fontFamily: "'Barlow Condensed'", fontSize: 'clamp(22px, 5vw, 28px)', fontWeight: 900, color: '#111', marginBottom: 8 }}>
           Purchase: <span style={{ color: '#FF0000' }}>{bike?.name}</span>
@@ -120,6 +176,20 @@ const BikePurchaseModal = ({ bike, onClose }) => {
             />
           </div>
 
+          {/* Email */}
+          <div>
+            <label style={labelStyle}>Email *</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="your.email@example.com"
+              required
+              value={formState.email}
+              onChange={handleInputChange}
+              style={inputStyle}
+            />
+          </div>
+
           {/* Phone */}
           <div>
             <label style={labelStyle}>Phone *</label>
@@ -134,7 +204,7 @@ const BikePurchaseModal = ({ bike, onClose }) => {
             />
           </div>
 
-          {/* Bike Model — pre-filled, disabled */}
+          {/* Bike Model */}
           <div>
             <label style={labelStyle}>Bike Model</label>
             <input
@@ -143,6 +213,44 @@ const BikePurchaseModal = ({ bike, onClose }) => {
               disabled
               style={{ ...inputStyle, background: '#f5f5f5', cursor: 'not-allowed' }}
             />
+          </div>
+
+          {/* Location Coordination System Section */}
+          <div>
+            <label style={labelStyle}>Location Coordinates *</label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <input 
+                  type="text" 
+                  placeholder="Tap 'Get Location' if coordinates are empty" 
+                  value={formState.latitude && formState.longitude ? `${formState.latitude.toFixed(5)}, ${formState.longitude.toFixed(5)}` : ''} 
+                  readOnly 
+                  style={{ ...inputStyle, background: '#f5f5f5', color: '#666' }} 
+                />
+              </div>
+              <button 
+                type="button" // Prevents form submission on press
+                onClick={getGeolocation} 
+                disabled={locationStatus === 'loading'} 
+                style={{ 
+                  padding: '11px 18px', 
+                  background: locationStatus === 'success' ? '#00AA44' : (locationStatus === 'error' ? '#CC0000' : '#111'), 
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: 8, 
+                  cursor: locationStatus === 'loading' ? 'not-allowed' : 'pointer', 
+                  fontFamily: "'Barlow'", 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  textTransform: 'uppercase', 
+                  whiteSpace: 'nowrap', 
+                  opacity: locationStatus === 'loading' ? 0.7 : 1, 
+                  transition: 'all 0.3s ease' 
+                }}
+              >
+                {locationStatus === 'loading' ? 'Getting...' : (locationStatus === 'success' ? '✓ Got' : 'Get Location')}
+              </button>
+            </div>
           </div>
 
           {/* City + State side by side */}
@@ -206,6 +314,7 @@ const BikePurchaseModal = ({ bike, onClose }) => {
               fontSize: 14, fontWeight: 600,
               backgroundColor: message.type === 'success' ? '#e0ffe0' : '#ffe0e0',
               color: message.type === 'success' ? '#00c600' : '#c60000',
+              textAlign: 'center'
             }}>
               {message.text}
             </div>

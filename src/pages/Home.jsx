@@ -8,6 +8,7 @@ import Reviews from '../components/sections/Reviews';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Gallery from '../components/Gallery';
+import CustomerGallery from '../components/sections/CustomerGallery';
 
 export default function Home() {
   return (
@@ -43,6 +44,7 @@ export default function Home() {
           <BookYourDreamBike />
           <Gallery showExplore={true} showHeader={true} />
           <Reviews />
+          <CustomerGallery/>
         </main>
         <Footer />
       </div>

@@ -1,60 +1,73 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-
+import BikePurchaseModal from '../BikePurchaseModal';
 
 export default function BuyBikes() {
-  const categories = ['All', 'Commuter', 'Sports', 'Premium', 'Scooter'];
+  const categories = ['All', 'Commuter', 'Sports', 'Premium'];
   const [allBikes, setAllBikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('default');
-  const [visible, setVisible] = useState(false);
+  const [animateStrip, setAnimateStrip] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedBike, setSelectedBike] = useState(null);
   const navigate = useNavigate();
 
-  // Dynamic API Fleet Fetching
   useEffect(() => {
     fetch('https://backend.yaytech.in/api/bike-models/')
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success && Array.isArray(resData.data)) {
-          // Normalize and map keys dynamically from API
           const structuredBikes = resData.data
             .filter((bike) => !bike.isDeleted)
-            .map((bike) => ({
-              id: bike.id,
-              name: bike.name,
-              brand: bike.brand || 'Hero',
-              category: bike.category || 'Commuter',
-              price: `₹${bike.exShowroomPrice?.toLocaleString('en-IN')}`,
-              rawPrice: bike.exShowroomPrice,
-              emi: `₹${Math.round(bike.exShowroomPrice * 0.028).toLocaleString('en-IN')}/mo`,
-              img: bike.imageUrl.startsWith('http') ? bike.imageUrl : `https://backend.yaytech.in${bike.imageUrl}`,
-              fuel: `${bike.mileage || '55'} kmpl`,
-              engine: `${bike.engineCapacity || '110'}cc`,
-              tag: bike.launchYear >= 2026 ? 'New' : bike.mileage > 70 ? 'Best Seller' : ''
-            }));
+            .map((bike) => {
+              const nameClean = bike.name?.trim() || '';
+              const cc = bike.engineCapacity || 0;
+              
+              let determinedCategory = 'Commuter';
+              if (cc > 150 || nameClean.includes('XTREME')) {
+                determinedCategory = 'Sports';
+              } else if (cc > 125) {
+                determinedCategory = 'Premium';
+              }
+
+              return {
+                id: bike.id,
+                name: nameClean,
+                brand: bike.brand?.trim() || 'Hero',
+                category: determinedCategory,
+                price: `₹${bike.exShowroomPrice?.toLocaleString('en-IN')}`,
+                rawPrice: bike.exShowroomPrice,
+                img: bike.imageUrl.startsWith('http') 
+                  ? bike.imageUrl 
+                  : `https://backend.yaytech.in${bike.imageUrl}`,
+                fuel: `${bike.mileage || '60'} kmpl`,
+                engine: `${cc}cc`,
+                tag: bike.launchYear >= 2026 ? '2026 Fleet' : bike.mileage >= 65 ? 'Top Mileage' : ''
+              };
+            });
           setAllBikes(structuredBikes);
         }
       })
       .catch((err) => console.error('Error fetching catalog bikes:', err))
       .finally(() => {
         setLoading(false);
-        setVisible(true);
+        setTimeout(() => setAnimateStrip(true), 50);
       });
   }, []);
 
-  const handleActionClick = (bikeName) => {
-    // Navigates and pushes pre-filled query param into the form
-    navigate(`/?model=${encodeURIComponent(bikeName)}`);
-    setTimeout(() => {
-      const el = document.getElementById('book-your-dream-bike');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }, 200);
+  const handleActionClick = (bike) => {
+    setSelectedBike(bike);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedBike(null);
   };
 
   let filtered = allBikes.filter(
-    (b) => activeCategory === 'All' || b.category.toLowerCase().trim() === activeCategory.toLowerCase().trim()
+    (b) => activeCategory === 'All' || b.category.toLowerCase() === activeCategory.toLowerCase()
   );
 
   if (sortBy === 'price-asc') filtered = [...filtered].sort((a, b) => a.rawPrice - b.rawPrice);
@@ -63,131 +76,230 @@ export default function BuyBikes() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
+        
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Barlow', sans-serif; background: #f5f5f5; }
-        .bike-card { transition: transform 0.28s ease, box-shadow 0.28s ease; }
-        .bike-card:hover { transform: translateY(-6px); box-shadow: 0 20px 48px rgba(0,0,0,0.13) !important; }
-        .bike-card:hover .bike-img { transform: scale(1.07); }
-        .bike-img { transition: transform 0.4s ease; }
-        .cat-btn { transition: all 0.18s ease; }
-        .cat-btn:hover { background: #111 !important; color: #fff !important; border-color: #111 !important; }
-        .enquire-btn { transition: all 0.22s ease; }
-        .enquire-btn:hover { background: #cc0000 !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(230,0,0,0.4) !important; }
-        @media (max-width: 640px) {
-          .bikes-grid { grid-template-columns: 1fr !important; }
-          .hero-bike-img { display: none !important; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #0f172a; overflow-x: hidden; }
+        
+        /* Keyframe Animations */
+        @keyframes cubicFadeUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        @media (max-width: 900px) {
-          .bikes-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        @keyframes floatDynamics {
+          0%, 100% { transform: translateY(0px) scale(1.05); }
+          50% { transform: translateY(-12px) scale(1.1); }
+        }
+
+        .animate-hero-text { animation: cubicFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .hero-floating-bike { animation: floatDynamics 5s ease-in-out infinite; }
+        
+        /* Smooth Horizontal Scrolling Configurations */
+        .horizontal-scroll-container {
+          display: flex;
+          gap: 28px;
+          overflow-x: auto;
+          scroll-behavior: smooth;
+          padding: 20px 4px 40px 4px;
+          webkit-overflow-scrolling: touch;
+        }
+        
+        /* Hide scrollbars completely while maintaining operational touch/drag scroll */
+        .horizontal-scroll-container::-webkit-scrollbar { display: none; }
+        .horizontal-scroll-container { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Premium Card Structural Hover Triggers */
+        .bike-card { 
+          flex: 0 0 340px; /* Locks dynamic width inside the horizontal scroll row */
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+        }
+        .bike-card:hover { 
+          transform: translateY(-6px); 
+          border-color: #ef4444 !important;
+          box-shadow: 0 20px 35px rgba(15, 23, 42, 0.08);
+        }
+        .bike-card:hover .bike-img { transform: scale(1.06) rotate(-1deg); }
+        .bike-img { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        .cat-btn { transition: all 0.2s ease; }
+        .cat-btn:hover { background: #0f172a !important; color: #fff !important; transform: translateY(-1px); }
+        
+        .enquire-btn { 
+          background: #ef4444;
+          transition: all 0.25s ease; 
+        }
+        .enquire-btn:hover { 
+          background: #dc2626 !important;
+          box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+        }
+
+        @media (max-width: 640px) {
+          .bike-card { flex: 0 0 290px; }
+          .hero-bike-container { display: none !important; }
         }
       `}</style>
 
-      {/* Hero Banner */}
+      {/* Pure White/Slate Premium Showroom Hero Section */}
       <section style={{
-        background: '#111',
-        backgroundImage: 'url(/images/bg1.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
         position: 'relative',
-        padding: 'clamp(60px, 15vw, 120px) 5vw clamp(50px, 12vw, 80px)',
-        color: '#fff',
+        padding: 'clamp(70px, 12vw, 130px) 6vw clamp(50px, 10vw, 90px)',
+        background: 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)',
         overflow: 'hidden',
-      }} className="hero-section">
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 100%)', zIndex: 1 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'clamp(20px, 5vw, 60px)', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 auto', minWidth: 300 }}>
-            <div style={{ fontFamily: "'Barlow Condensed'", fontSize: 'clamp(10px, 2vw, 13px)', fontWeight: 700, letterSpacing: '3px', color: '#ff4d4d', textTransform: 'uppercase', marginBottom: 'clamp(12px, 3vw, 18px)' }}>
-              ── AUTHORIZED HERO DEALER ──
+        borderBottom: '1px solid #e2e8f0'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '40px', maxWidth: 1200, margin: '0 auto' }}>
+          <div className="animate-hero-text" style={{ flex: '1 1 auto', maxWidth: 600 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fef2f2', border: '1px solid #fee2e2', padding: '6px 14px', borderRadius: 100, fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', color: '#ef4444', textTransform: 'uppercase', marginBottom: 20 }}>
+              <span style={{ width: 6, height: 6, background: '#ef4444', borderRadius: '50%', display: 'inline-block' }} /> 
+              AUTHORIZED HERO PARTNER
             </div>
-            <h1 style={{ fontFamily: "'Barlow Condensed'", fontSize: 'clamp(52px, 8vw, 96px)', fontWeight: 900, lineHeight: 0.93, letterSpacing: '-1px', marginBottom: 24 }}>
-              FIND YOUR<br />
-              <span style={{ color: '#FF0000' }}>PERFECT</span> RIDE
+            <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(40px, 6vw, 76px)', fontWeight: 700, lineHeight: 0.98, letterSpacing: '-2.5px', color: '#0f172a', marginBottom: 20 }}>
+              CHOOSE YOUR<br />
+              <span style={{ color: '#ef4444' }}>NEXT HORIZON.</span>
             </h1>
-            <p style={{ fontSize: 'clamp(14px, 3vw, 17px)', color: 'rgba(255,255,255,0.72)', fontWeight: 500, maxWidth: 480, lineHeight: 1.65, marginBottom: 'clamp(24px, 5vw, 36px)' }}>
-              Explore our full range of Hero bikes — commuters, sports, scooters & premium machines. Best prices guaranteed.
+            <p style={{ fontSize: 'clamp(15px, 2.2vw, 17px)', color: '#475569', fontWeight: 400, lineHeight: 1.6, maxWidth: 490 }}>
+              Slide through our authorized 2026 machine catalogue. Engineered for absolute reliability and optimized performance.
             </p>
           </div>
-          <div className="hero-bike-img" style={{ flex: '1 1 auto', minWidth: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="https://bikebazardelhi.com/uploads/vehicle/4545-removebg-preview.png" alt="Glamour Bike" style={{ width: '100%', maxWidth: 'clamp(250px, 22vw, 380px)', height: 'clamp(300px, 50vh, 500px)', objectFit: 'contain', filter: 'drop-shadow(0 10px 40px rgba(255,0,0,0.3))', transform: 'scale(1.5)' }} />
+
+          <div className="hero-bike-container" style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center' }}>
+            <img 
+              className="hero-floating-bike" 
+              src="https://bikebazardelhi.com/uploads/vehicle/4545-removebg-preview.png" 
+              alt="Hero Flagship" 
+              style={{ width: '100%', maxWidth: '400px', objectFit: 'contain', filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.12))' }} 
+            />
           </div>
         </div>
       </section>
 
-      {/* Filters */}
-      {/* <section style={{ background: '#fff', borderBottom: '1px solid #eee', padding: 'clamp(12px, 3vw, 20px) 5vw', position: 'sticky', top: 66, zIndex: 40, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <div className="filters-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      {/* Control Hub Navigation */}
+      <section style={{ background: '#ffffff', position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid #e2e8f0', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {categories.map(cat => (
-              <button key={cat} className="cat-btn" onClick={() => setActiveCategory(cat)} style={{
-                padding: '8px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-                fontFamily: "'Barlow'",
-                background: activeCategory === cat ? '#111' : '#fff',
-                color: activeCategory === cat ? '#fff' : '#666',
-                border: activeCategory === cat ? '1.5px solid #111' : '1.5px solid #ddd',
-                cursor: 'pointer',
-              }}>{cat}</button>
+              <button 
+                key={cat} 
+                className="cat-btn" 
+                onClick={() => setActiveCategory(cat)} 
+                style={{
+                  padding: '8px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  background: activeCategory === cat ? '#0f172a' : '#f1f5f9',
+                  color: activeCategory === cat ? '#ffffff' : '#475569',
+                  border: '1px solid transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                {cat}
+              </button>
             ))}
           </div>
-          <select onChange={e => setSortBy(e.target.value)} style={{ padding: '9px 14px', border: '1.5px solid #ddd', borderRadius: 6, fontSize: 13, fontWeight: 600, color: '#444', background: '#fff', cursor: 'pointer', fontFamily: "'Barlow'" }}>
-            <option value="default">Sort: Default</option>
+
+          <select 
+            onChange={e => setSortBy(e.target.value)} 
+            style={{ padding: '9px 14px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#334155', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="default">Sort Fleet Configuration</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
           </select>
         </div>
-      </section> */}
+      </section>
 
-      {/* Catalog Grid */}
-      <section style={{ padding: 'clamp(40px, 8vw, 52px) 5vw clamp(60px, 12vw, 80px)', background: '#f5f5f5' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      {/* Horizontal Carousel Section */}
+      <section style={{ padding: '60px 0 80px 0', background: '#f8fafc' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700, color: '#0f172a' }}>Available Lineup</h2>
+              <p style={{ fontSize: 13, color: '#64748b' }}>Swipe left or drag to explore fleet modifications</p>
+            </div>
+            {/* Elegant visual direction indicator */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#94a3b8', fontSize: 12, fontWeight: 600 }}>
+              <span>Scroll Right</span>
+              <span style={{ fontSize: 16 }}>→</span>
+            </div>
+          </div>
+
           {loading ? (
-            <div style={{ textAlign: 'center', fontSize: 18, color: '#666', padding: '40px 0' }}>Loading Fleet Showroom...</div>
+            <div style={{ textAlign: 'center', padding: '80px 0', color: '#64748b' }}>
+              <div style={{ width: 32, height: 32, border: '2.5px solid #e2e8f0', borderTopColor: '#ef4444', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 0.8s linear infinite' }} />
+              <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.5px' }}>FETCHING APPOINTED FLEET...</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
           ) : (
-            <div className="bikes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'clamp(16px, 3vw, 24px)' }}>
-              {filtered.map((bike, i) => (
-                <div key={bike.id} className="bike-card" style={{
-                  background: '#fff',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
-                  border: '1.5px solid #eee',
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? 'translateY(0)' : 'translateY(24px)',
-                  transition: `opacity 0.5s ease ${i * 60}ms, transform 0.5s ease ${i * 60}ms`,
-                }}>
-                  <div style={{ background: '#f8f8f8', padding: '24px 16px', position: 'relative' }}>
+            <div 
+              className="horizontal-scroll-container"
+              style={{
+                opacity: animateStrip ? 1 : 0,
+                transform: animateStrip ? 'translateX(0)' : 'translateX(20px)',
+                transition: 'opacity 0.6s ease-out, transform 0.6s ease-out'
+              }}
+            >
+              {filtered.map((bike) => (
+                <div 
+                  key={bike.id} 
+                  className="bike-card" 
+                  style={{
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  {/* Image Presentation Bed */}
+                  <div style={{ background: '#f1f5f9', padding: '30px 20px 10px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 170 }}>
                     {bike.tag && (
-                      <span style={{ position: 'absolute', top: 12, left: 12, background: '#FF0000', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 4 }}>
+                      <span style={{ position: 'absolute', top: 14, left: 14, background: '#0f172a', color: '#ffffff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 5, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                         {bike.tag}
                       </span>
                     )}
-                    <img className="bike-img" src={bike.img} alt={bike.name} style={{ width: '100%', height: 140, objectFit: 'contain', display: 'block' }} />
+                    <img className="bike-img" src={bike.img} alt={bike.name} style={{ width: '100%', maxHeight: 120, objectFit: 'contain', display: 'block' }} />
                   </div>
-                  <div style={{ padding: 20 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#FF0000', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>{bike.brand} · {bike.category}</div>
-                    <h3 style={{ fontFamily: "'Barlow Condensed'", fontSize: 24, fontWeight: 900, color: '#111', marginBottom: 12 }}>{bike.name}</h3>
 
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: '#f5f5f5', borderRadius: 8, padding: 8 }}>
-                      <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: 10, color: '#aaa' }}>⚡ Engine</div>
-                        <div style={{ fontSize: 12, fontWeight: 800 }}>{bike.engine}</div>
+                  {/* Specifications Content Container */}
+                  <div style={{ padding: '20px 24px 24px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 4 }}>
+                      {bike.brand} · {bike.category}
+                    </div>
+                    <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.25, height: 48, overflow: 'hidden' }}>
+                      {bike.name}
+                    </h3>
+                    
+                    {/* Metrics Pills */}
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                      <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Engine</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{bike.engine}</div>
                       </div>
-                      <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: 10, color: '#aaa' }}>🛢 Mileage</div>
-                        <div style={{ fontSize: 12, fontWeight: 800 }}>{bike.fuel}</div>
+                      <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Mileage</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{bike.fuel}</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                    {/* Financial Matrix */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
                       <div>
-                        <div style={{ fontSize: 10, color: '#aaa' }}>Ex-showroom price</div>
-                        <div style={{ fontFamily: "'Barlow Condensed'", fontSize: 26, fontWeight: 900, color: '#111' }}>{bike.price}*</div>
+                        <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500 }}>EST. EX-SHOWROOM PRICE</div>
+                        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, color: '#0f172a' }}>
+                          {bike.price}
+                        </div>
                       </div>
-
                     </div>
 
-                    <button onClick={() => handleActionClick(bike.name)} className="enquire-btn" style={{ width: '100%', padding: 12, background: '#FF0000', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: 'pointer', textTransform: 'uppercase' }}>
-                      Enquire Now →
+                    {/* CTA Primary Action */}
+                    <button 
+                      onClick={() => handleActionClick(bike)} 
+                      className="enquire-btn" 
+                      style={{ width: '100%', padding: '12px', color: '#ffffff', border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, letterSpacing: '0.3px' }}
+                    >
+                      ENQUIRE NOW <span>→</span>
                     </button>
                   </div>
                 </div>
@@ -196,6 +308,10 @@ export default function BuyBikes() {
           )}
         </div>
       </section>
+
+      {showModal && selectedBike && (
+        <BikePurchaseModal bike={selectedBike} onClose={handleCloseModal} />
+      )}
     </>
   );
 }

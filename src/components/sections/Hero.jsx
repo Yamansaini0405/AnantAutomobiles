@@ -150,7 +150,7 @@ const EnquiryFormComponent = memo(({
         )}
 
         {/* Location Coordinates Row System */}
-        {fieldWrap('Location Coordinates *',
+        {fieldWrap('Location Coordinates (Optional)',
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <input 

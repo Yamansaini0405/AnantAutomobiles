@@ -187,7 +187,7 @@ const BikePurchaseModal = ({ bike, onClose }) => {
 
           {/* Location Coordinates System */}
           <div>
-            <label style={labelStyle}>Location Coordinates *</label>
+            <label style={labelStyle}>Location Coordinates (Optional)</label>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <input 

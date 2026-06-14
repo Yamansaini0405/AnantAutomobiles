@@ -422,7 +422,7 @@ const BookYourDreamBike = () => {
 
             {/* Location Coordinates Row System across full row width */}
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ color: '#fff' }}>Location Coordinates <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <label style={{ color: '#fff' }}>Location Coordinates <span style={{ color: '#999' }}>(Optional)</span></label>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <input 
